@@ -1,3 +1,6 @@
+Obs.: caso o app esteja no modo "sleeping" (dormindo) ao entrar, basta clicar no botão que estará disponível e aguardar, para ativar o mesmo. 
+<img width="877" height="700" alt="image" src="https://github.com/user-attachments/assets/abcf806f-f45d-4157-9da9-14ce5bc211b5" />
+
 # 🎲 Sorteio Eletrônico
 
 Um web app interativo em **Python + Streamlit** para realizar sorteios eletrônicos.  
@@ -78,3 +81,4 @@ O app ficará disponível em:
 
 Ary Ribeiro
 📧 aryribeiro@gmail.com
+
