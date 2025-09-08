@@ -9,6 +9,7 @@ from typing import List, Dict, Tuple, Optional
 from contextlib import contextmanager
 from functools import lru_cache
 import weakref
+import bcrypt
 
 # Configuração da página
 st.set_page_config(
@@ -79,6 +80,15 @@ st.markdown("""
         margin: 20px 0;
     }
     
+    .security-panel {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin: 20px 0;
+        border: 2px solid #a93226;
+    }
+    
     .status-badge {
         padding: 8px 16px;
         border-radius: 20px;
@@ -144,6 +154,89 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+class SecurityManager:
+    """Gerenciador de segurança para autenticação"""
+    
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self._init_security_db()
+    
+    def _init_security_db(self):
+        """Inicializa tabela de segurança"""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS admin_security (
+                    id INTEGER PRIMARY KEY DEFAULT 1,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # Verifica se já existe senha configurada
+            cursor = conn.cursor()
+            existing = cursor.execute("SELECT password_hash FROM admin_security WHERE id = 1").fetchone()
+            
+            if not existing:
+                # Cria senha padrão hasheada
+                default_password = "admin123"
+                password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                cursor.execute(
+                    "INSERT INTO admin_security (id, password_hash) VALUES (1, ?)",
+                    (password_hash,)
+                )
+                conn.commit()
+        finally:
+            conn.close()
+    
+    def verify_password(self, password: str) -> bool:
+        """Verifica senha do administrador"""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            result = cursor.execute("SELECT password_hash FROM admin_security WHERE id = 1").fetchone()
+            
+            if result:
+                stored_hash = result[0].encode('utf-8')
+                return bcrypt.checkpw(password.encode('utf-8'), stored_hash)
+            return False
+        finally:
+            conn.close()
+    
+    def change_password(self, current_password: str, new_password: str) -> Tuple[bool, str]:
+        """Altera senha do administrador"""
+        # Validações de segurança
+        if len(new_password) < 6:
+            return False, "Nova senha deve ter pelo menos 6 caracteres"
+        
+        if not self.verify_password(current_password):
+            return False, "Senha atual incorreta"
+        
+        if current_password == new_password:
+            return False, "A nova senha deve ser diferente da atual"
+        
+        # Gerar novo hash
+        new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE admin_security SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1",
+                (new_hash,)
+            )
+            conn.commit()
+            return True, "Senha alterada com sucesso!"
+        except Exception as e:
+            return False, f"Erro ao alterar senha: {str(e)}"
+        finally:
+            conn.close()
+    
+    def is_default_password(self) -> bool:
+        """Verifica se ainda está usando a senha padrão"""
+        return self.verify_password("admin123")
 
 class ConnectionPool:
     """Pool de conexões SQLite otimizado"""
@@ -265,6 +358,7 @@ class OptimizedSorteioSystem:
         self.db_path = db_path
         self.pool = ConnectionPool(db_path)
         self.cache = CacheManager()
+        self.security = SecurityManager(db_path)
         self._prepared_statements = {}
         self._last_action_time = {}
         self._debounce_delay = 1.0  # segundos
@@ -716,8 +810,51 @@ def area_cadastro():
                 else:
                     st.error(f"❌ {msg}")
 
+def show_password_change_form():
+    """Formulário para alteração de senha"""
+    st.markdown("""
+    <div class="security-panel">
+        <h4>🔐 Alterar Senha de Administrador</h4>
+        <p><strong>⚠️ IMPORTANTE:</strong> Você ainda está usando a senha padrão. Por segurança, altere-a imediatamente!</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.form("change_password_form"):
+        st.subheader("🔒 Alterar Senha")
+        
+        current_password = st.text_input("Senha Atual:", type="password", key="current_pwd")
+        new_password = st.text_input("Nova Senha:", type="password", key="new_pwd")
+        confirm_password = st.text_input("Confirmar Nova Senha:", type="password", key="confirm_pwd")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            change_btn = st.form_submit_button("🔐 Alterar Senha", use_container_width=True)
+        with col2:
+            cancel_btn = st.form_submit_button("❌ Cancelar", use_container_width=True)
+        
+        if cancel_btn:
+            st.session_state.show_password_form = False
+            st.rerun()
+        
+        if change_btn:
+            if not current_password or not new_password or not confirm_password:
+                st.error("Preencha todos os campos!")
+            elif new_password != confirm_password:
+                st.error("As senhas não coincidem!")
+            else:
+                success, message = sistema.security.change_password(current_password, new_password)
+                
+                if success:
+                    st.success(f"✅ {message}")
+                    st.session_state.show_password_form = False
+                    st.balloons()
+                    time.sleep(2)
+                    st.rerun()
+                else:
+                    st.error(f"❌ {message}")
+
 def area_admin():
-    """Painel administrativo otimizado"""
+    """Painel administrativo otimizado com segurança melhorada"""
     st.header("🎯 Painel Administrativo")
     
     # Autenticação com estado persistente
@@ -730,7 +867,7 @@ def area_admin():
             login_btn = st.form_submit_button("Entrar")
             
             if login_btn:
-                if senha == "admin123":
+                if sistema.security.verify_password(senha):
                     st.session_state.admin_logged = True
                     st.success("Login realizado!")
                     time.sleep(0.5)
@@ -738,6 +875,20 @@ def area_admin():
                 else:
                     st.error("Senha incorreta!")
         return
+    
+    # Verificar se deve mostrar formulário de alteração de senha
+    if st.session_state.get("show_password_form", False):
+        show_password_change_form()
+        return
+    
+    # Alerta de segurança se usando senha padrão
+    if sistema.security.is_default_password():
+        st.markdown("""
+        <div class="security-panel">
+            <h4>⚠️ ALERTA DE SEGURANÇA</h4>
+            <p><strong>Você está usando a senha padrão!</strong> Por favor, altere-a imediatamente por questões de segurança.</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Interface admin otimizada
     status = sistema.get_status_sessao()
@@ -789,10 +940,21 @@ def area_admin():
                 state_manager.set_compressed_state("mostrar_vencedor", False)
                 st.rerun()
     
-    # Logout
-    if st.button("🚪 Logout", type="secondary"):
-        st.session_state.admin_logged = False
-        st.rerun()
+    st.markdown("---")
+    
+    # Área de configurações de segurança
+    col_sec1, col_sec2 = st.columns(2)
+    
+    with col_sec1:
+        if st.button("🔐 Alterar Senha", use_container_width=True, type="secondary"):
+            st.session_state.show_password_form = True
+            st.rerun()
+    
+    with col_sec2:
+        if st.button("🚪 Logout", type="secondary", use_container_width=True):
+            st.session_state.admin_logged = False
+            st.session_state.show_password_form = False
+            st.rerun()
 
 def exibir_vencedor():
     """Exibe vencedor atual otimizado"""
@@ -999,7 +1161,7 @@ def get_app_metadata():
     return {
         "version": "2.0.0",
         "last_updated": datetime.now().isoformat(),
-        "features": ["connection_pooling", "intelligent_cache", "lazy_loading", "debouncing"]
+        "features": ["connection_pooling", "intelligent_cache", "lazy_loading", "debouncing", "secure_auth"]
     }
 
 # Tratamento de erros global
