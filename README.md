@@ -5,23 +5,6 @@ Obs.: caso o app esteja no modo "sleeping" (dormindo) ao entrar, basta clicar no
 
 Um sistema completo de sorteio eletrônico desenvolvido em Python com Streamlit, otimizado para performance e experiência do usuário.
 
-## 📋 Índice
-
-- [Sobre o Projeto](#sobre-o-projeto)
-- [Características](#características)
-- [Tecnologias Utilizadas](#tecnologias-utilizadas)
-- [Pré-requisitos](#pré-requisitos)
-- [Instalação](#instalação)
-- [Como Usar](#como-usar)
-- [Funcionalidades](#funcionalidades)
-- [Arquitetura](#arquitetura)
-- [Otimizações Implementadas](#otimizações-implementadas)
-- [Configuração](#configuração)
-- [Troubleshooting](#troubleshooting)
-- [Contribuindo](#contribuindo)
-- [Licença](#licença)
-- [Contato](#contato)
-
 ## 🎯 Sobre o Projeto
 
 O **Sorteio Eletrônico** é uma aplicação web desenvolvida para facilitar a realização de sorteios de forma transparente e eficiente. O sistema permite o cadastro de participantes, geração automática de números da sorte e realização de sorteios com interface moderna e responsiva.
@@ -329,5 +312,6 @@ Contribuições são bem-vindas! Para contribuir:
 **⭐ Se este projeto foi útil para você, considere dar uma estrela no GitHub!**
 
 ---
+
 
 *Desenvolvido com ❤️ em Python*
