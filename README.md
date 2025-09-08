@@ -298,15 +298,6 @@ Contribuições são bem-vindas! Para contribuir:
 - 📧 Email: [aryribeiro@gmail.com](mailto:aryribeiro@gmail.com)
 - 💼 LinkedIn: [Ary Ribeiro](https://linkedin.com/in/aryribeiro)
 - 🐙 GitHub: [@aryribeiro](https://github.com/aryribeiro)
-
----
-
-## 🎉 Agradecimentos
-
-- Comunidade Streamlit pela excelente documentação
-- Beta testers que ajudaram no desenvolvimento
-- Todos que contribuíram com feedback e sugestões
-
 ---
 
 **⭐ Se este projeto foi útil para você, considere dar uma estrela no GitHub!**
@@ -315,3 +306,4 @@ Contribuições são bem-vindas! Para contribuir:
 
 
 *Desenvolvido com ❤️ em Python*
+
